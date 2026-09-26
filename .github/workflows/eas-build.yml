@@ -1,0 +1,78 @@
+name: EAS Build (prayer-times Android)
+
+on:
+  # يدوي — تختار البروفايل وقت التشغيل من تبويب Actions في GitHub
+  workflow_dispatch:
+    inputs:
+      profile:
+        description: "بروفايل eas.json المستعمل"
+        required: true
+        default: preview
+        type: choice
+        options:
+          - development
+          - preview
+          - production
+  # تلقائي عند أي push على main يلمس تطبيق prayer-times
+  push:
+    branches: [main]
+    paths:
+      - "artifacts/prayer-times/**"
+      - ".github/workflows/eas-build.yml"
+
+jobs:
+  build:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: artifacts/prayer-times
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies (monorepo root)
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Trigger EAS build and wait
+        id: eas_build
+        run: |
+          eas build \
+            --platform android \
+            --profile ${{ github.event.inputs.profile || 'preview' }} \
+            --non-interactive \
+            --wait \
+            --json > build-output.json
+          cat build-output.json
+
+          # eas build --json يرجع array فيه build واحد هوني
+          BUILD_URL=$(node -e "console.log(require('./build-output.json')[0].artifacts.buildUrl)")
+          echo "apk_url=$BUILD_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Download APK
+        working-directory: artifacts/prayer-times
+        run: curl -L -o app.apk "${{ steps.eas_build.outputs.apk_url }}"
+
+      - name: Upload APK as workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: prayer-times-${{ github.event.inputs.profile || 'preview' }}.apk
+          path: artifacts/prayer-times/app.apk
+          retention-days: 30
