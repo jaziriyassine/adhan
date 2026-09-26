@@ -1,0 +1,46 @@
+{
+  "expo": {
+    "name": "مواقيت الصلاة",
+    "slug": "prayer-times",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/images/icon.png",
+    "scheme": "prayer-times",
+    "userInterfaceStyle": "automatic",
+    "splash": {
+      "backgroundColor": "#F4F5EF"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "يُستخدم موقعك لحساب مواقيت الصلاة واتجاه القبلة بدقة."
+      }
+    },
+    "android": {
+      "permissions": [
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.SCHEDULE_EXACT_ALARM"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/images/icon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "يُستخدم موقعك لحساب مواقيت الصلاة واتجاه القبلة بدقة."
+        }
+      ],
+      "expo-notifications",
+      "expo-audio"
+    ],
+    "experiments": {
+      "typedRoutes": true,
+      "reactCompiler": true
+    }
+  }
+}
