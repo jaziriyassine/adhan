@@ -25,6 +25,7 @@ import {
   requestPrayerNotificationPermission,
   schedulePrayerNotifications,
 } from '@/services/notifications';
+import { coordinatesToPlaceName } from '@/services/geocoding';
 
 export interface PrayerSettings {
   location: PrayerLocation;
@@ -238,8 +239,12 @@ export function PrayerProvider({ children }: { children: React.ReactNode }) {
         };
       }
 
+      const name = await coordinatesToPlaceName(
+        coordinates.latitude,
+        coordinates.longitude,
+      );
       updateLocation({
-        name: 'موقعي الحالي',
+        name,
         latitude: coordinates.latitude,
         longitude: coordinates.longitude,
         source: 'gps',
