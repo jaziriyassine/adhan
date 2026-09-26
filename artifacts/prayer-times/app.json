@@ -35,7 +35,18 @@
           "locationWhenInUsePermission": "يُستخدم موقعك لحساب مواقيت الصلاة واتجاه القبلة بدقة."
         }
       ],
-      "expo-notifications",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/icon.png",
+          "sounds": [
+            "./assets/sounds/ahmed_al_imadi.mp3",
+            "./assets/sounds/majed_al_hamathani.mp3",
+            "./assets/sounds/mokhtar_hadj_slimane.mp3",
+            "./assets/sounds/nasser_al_qatami.mp3"
+          ]
+        }
+      ],
       "expo-audio"
     ],
     "experiments": {
