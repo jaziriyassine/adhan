@@ -28,6 +28,7 @@ import {
   type MadhabId,
 } from '@/services/prayerTimes';
 import { ADHAN_VOICES, getAdhanVoice } from '@/services/adhanAudio';
+import { placeNameToCoordinates } from '@/services/geocoding';
 import { usePrayerSettings } from '@/state/PrayerContext';
 
 type SettingsColors = ReturnType<typeof useColors>;
@@ -49,8 +50,7 @@ export default function SettingsScreen() {
   } = usePrayerSettings();
   const [editingLocation, setEditingLocation] = useState(false);
   const [locationName, setLocationName] = useState('');
-  const [latitude, setLatitude] = useState('');
-  const [longitude, setLongitude] = useState('');
+  const [isResolvingLocation, setIsResolvingLocation] = useState(false);
   const selectedVoice = getAdhanVoice(settings.adhanVoiceId);
   const adhanPlayer = useAudioPlayer(selectedVoice.url, {
     downloadFirst: true,
@@ -76,33 +76,38 @@ export default function SettingsScreen() {
     setLocationName(
       settings.location.source === 'sample' ? '' : settings.location.name,
     );
-    setLatitude(String(settings.location.latitude));
-    setLongitude(String(settings.location.longitude));
     setEditingLocation(true);
   };
 
-  const saveLocation = () => {
-    const lat = Number(latitude.replace(',', '.'));
-    const lon = Number(longitude.replace(',', '.'));
-    if (
-      !Number.isFinite(lat) ||
-      !Number.isFinite(lon) ||
-      lat < -90 ||
-      lat > 90 ||
-      lon < -180 ||
-      lon > 180
-    ) {
-      Alert.alert('إحداثيات غير صحيحة', 'أدخل خط عرض بين -90 و90 وخط طول بين -180 و180.');
+  const saveLocation = async () => {
+    const query = locationName.trim();
+    if (!query) {
+      Alert.alert('اكتب اسم مكان', 'أدخل اسم مدينة أو منطقة (مثال: صفاقس).');
       return;
     }
-    updateLocation({
-      name: locationName.trim() || 'موقع يدوي',
-      latitude: lat,
-      longitude: lon,
-      source: 'manual',
-    });
-    setEditingLocation(false);
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setIsResolvingLocation(true);
+    try {
+      const resolved = await placeNameToCoordinates(query);
+      if (!resolved) {
+        Alert.alert(
+          'لم يتم العثور على المكان',
+          'تحقق من الاسم وحاول مجددًا (مثال: صفاقس، تونس).',
+        );
+        return;
+      }
+      updateLocation({
+        name: resolved.name,
+        latitude: resolved.latitude,
+        longitude: resolved.longitude,
+        source: 'manual',
+      });
+      setEditingLocation(false);
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch {
+      Alert.alert('تعذّر البحث', 'تحقق من اتصالك بالإنترنت وحاول مجددًا.');
+    } finally {
+      setIsResolvingLocation(false);
+    }
   };
 
   const chooseMethod = (method: CalculationMethodId) => {
@@ -218,40 +223,33 @@ export default function SettingsScreen() {
           ) : null}
           {editingLocation ? (
             <View style={styles.locationForm}>
-              <Text style={styles.formTitle}>أدخل اسم المكان وإحداثياته</Text>
+              <Text style={styles.formTitle}>اكتب اسم المدينة أو المنطقة</Text>
               <SettingsInput
                 label="اسم المكان"
                 value={locationName}
                 onChangeText={setLocationName}
-                placeholder="مثال: صفاقس"
+                placeholder="مثال: صفاقس، تونس"
                 keyboardType="default"
                 colors={colors}
               />
-              <View style={styles.coordinateInputs}>
-                <SettingsInput
-                  label="خط الطول"
-                  value={longitude}
-                  onChangeText={setLongitude}
-                  placeholder="10.7600"
-                  keyboardType="decimal-pad"
-                  colors={colors}
-                />
-                <SettingsInput
-                  label="خط العرض"
-                  value={latitude}
-                  onChangeText={setLatitude}
-                  placeholder="34.7400"
-                  keyboardType="decimal-pad"
-                  colors={colors}
-                />
-              </View>
               <View style={styles.formActions}>
                 <Pressable
                   accessibilityRole="button"
-                  onPress={saveLocation}
-                  style={styles.actionButton}
+                  disabled={isResolvingLocation}
+                  onPress={() => void saveLocation()}
+                  style={[
+                    styles.actionButton,
+                    isResolvingLocation && styles.disabledButton,
+                  ]}
                 >
-                  <Text style={styles.actionButtonText}>حفظ الموقع</Text>
+                  {isResolvingLocation ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={colors.primaryForeground}
+                    />
+                  ) : (
+                    <Text style={styles.actionButtonText}>حفظ الموقع</Text>
+                  )}
                 </Pressable>
                 <Pressable
                   accessibilityRole="button"
