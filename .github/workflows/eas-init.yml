@@ -1,0 +1,58 @@
+name: EAS Init (link project)
+
+on:
+  workflow_dispatch:
+    inputs:
+      account:
+        description: "حساب أو فريق Expo يتربط بيه المشروع"
+        required: true
+        default: yassine_2011
+        type: string
+
+jobs:
+  init:
+    name: Link EAS project
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    defaults:
+      run:
+        working-directory: artifacts/prayer-times
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+
+      - name: Install dependencies (monorepo root)
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+
+      - name: Setup EAS
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Run eas init
+        run: eas init --account ${{ github.event.inputs.account }} --non-interactive --force
+
+      - name: Commit app.json if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          if git diff --quiet app.json; then
+            echo "No changes to app.json"
+          else
+            git add app.json
+            git commit -m "chore: link EAS project [skip ci]"
+            git push
+          fi
